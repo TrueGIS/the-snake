@@ -41,27 +41,52 @@ clock = pygame.time.Clock()
 
 # Тут опишите все классы игры.
 class GameObject:
-    def __init__(self, position, body_color):
-        self.position = position
-        # SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-        self.body_color = body_color
+    def __init__(self):
+        self.position = (GRID_WIDTH / 2, GRID_HEIGHT / 2)
+        self.body_color = None
 
     def draw(self):
         pass
 
 
 class Snake(GameObject):
-    def __init__(self, position, body_color):
-        super().__init__(position, body_color)
+    def __init__(self):
+        super().__init__()
+        self.body_color = SNAKE_COLOR
+        self.positions = [self.position]
+        self.length = len(self.positions)
+        self.direction = RIGHT
+        self.next_direction = None
+        self.last = None
+
+    def get_head_position(self):
+        return self.positions[0]
+
+    def move(self):
+        head_position = get_head_position()
+        new_head_position = ((head_position[0] + self.direction[0] * GRID_SIZE), 
+                             (head_position[1] + self.direction[1] * GRID_SIZE))
+        self.positions.insert(0, new_head_position)        
+        self.last = self.positions[-1]
+        if len(self.positions) > self.length:
+            self.positions.remove(self.last)
 
 
 class Apple(GameObject):
-    def __init__(self, position, body_color):
-        super().__init__(position, body_color)
+    def __init__(self):
+        super().__init__()
+        self.position = randomize_pozition()       
         self.body_color = APPLE_COLOR
 
-    def randomize_position():
-        pass
+    def randomize_position(self):
+        apple_x = random.randint(0, GRID_WIDTH-1) * GRID_SIZE
+        apple_y = random.randint(0, GRID_HEIGHT-1) * GRID_SIZE
+        return apple_x, apple_y
+
+    def draw(self):
+        rect = pygame.Rect(self.position, (GRID_SIZE, GRID_SIZE))
+        pygame.draw.rect(screen, self.body_color, rect)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 def main():
