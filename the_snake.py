@@ -14,20 +14,23 @@ DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
 
-# Цвет фона - черный:
-BOARD_BACKGROUND_COLOR = (0, 0, 0)
-
 # Цвет границы ячейки
 BORDER_COLOR = (93, 216, 228)
 
-# Цвет яблока
-APPLE_COLOR = (255, 0, 0)
+# Цвет фона
+BOARD_BACKGROUND_COLOR = (0, 0, 0)
+
+# Цвет красного яблока
+RED_COLOR = (255, 0, 0)
+
+# Цвет красного яблока
+BLUE_COLOR = (0, 0, 255)
+
+# Цвет красного яблока
+GOLDEN_COLOR = (255, 215, 0)
 
 # Цвет змейки
 SNAKE_COLOR = (0, 255, 0)
-
-# Скорость движения змейки:
-SPEED = 20
 
 # Настройка игрового окна:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -41,6 +44,8 @@ clock = pygame.time.Clock()
 
 class GameObject:
     """Базовый класс для объектов игры."""
+
+    board_background_color: tuple = BOARD_BACKGROUND_COLOR
 
     def __init__(self):
         self.position: tuple = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -71,6 +76,7 @@ class Snake(GameObject):
         self.direction: tuple = RIGHT
         self.next_direction: tuple = None
         self.last: tuple = None
+        self.speed: int = 10
 
     def get_head_position(self) -> tuple:
         """Возвращает текущие координаты головы змейки."""
@@ -142,16 +148,17 @@ class Snake(GameObject):
             pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
         if self.last:
             last_rect = pygame.Rect(self.last, (GRID_SIZE, GRID_SIZE))
-            pygame.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
+            pygame.draw.rect(screen,
+                             GameObject.board_background_color, last_rect)
 
 
 class Apple(GameObject):
-    """Представляет яблоко, перемещает и рисует его."""
+    """Представляет яблоки, перемещает и рисует их."""
 
     def __init__(self):
         super().__init__()
-        self.position = self.randomize_position()
-        self.body_color = APPLE_COLOR
+        self.position = None
+        self.body_color = None
 
     def randomize_position(self) -> tuple:
         """
@@ -167,6 +174,90 @@ class Apple(GameObject):
         rect = pygame.Rect(self.position, (GRID_SIZE, GRID_SIZE))
         pygame.draw.rect(screen, self.body_color, rect)
         pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
+
+
+class RedApple(Apple):
+    """Представляет красное, вкусное яблоко."""
+
+    def __init__(self):
+        super().__init__()
+        self.position = self.randomize_position()
+        self.body_color = RED_COLOR
+
+
+class BlueApple(Apple):
+    """Представляет синее - ядовитое яблоко."""
+
+    def __init__(self):
+        super().__init__()
+        self.position = self.randomize_position()
+        self.body_color = BLUE_COLOR
+
+
+class GoldenApple(Apple):
+    """Представляет золотое яблоко-бустер."""
+
+    def __init__(self):
+        super().__init__()
+        self.position = self.randomize_position()
+        self.body_color = GOLDEN_COLOR
+
+
+class Eating:
+    """
+    Обработка событий съедания яблок змейкой.
+
+    Всего три вида яблок с разными свойствами.
+    """
+
+    @staticmethod
+    def red_apple(snake: Snake, red_apple: RedApple):
+        """
+        Съедание красного яблока змейкой.
+
+        При съедании яблока змейка растёт, излечивается от отравления
+        (фон становится чёрным), а яблоко перемещается в случайную
+        точку на экране.
+        """
+        head_snake = snake.get_head_position()
+        if head_snake == red_apple.position:
+            GameObject.board_background_color = BOARD_BACKGROUND_COLOR
+            snake.length += 1
+            red_apple.position = red_apple.randomize_position()
+
+    @staticmethod
+    def blue_apple(snake: Snake, blue_apple: BlueApple):
+        """
+        Съедание ядовитого яблока змейкой.
+
+        При съедании яблока змейка уменьшается, отравляется
+        (экран становится белым), пока не съешь нормальное яблоко,
+        ядовитое яблоко перемещается в случайную точку на экране.
+        Если змейка была длиной 1, то вызывается метод reset()
+        и змейка перемещается в центр и меняет направление движения.
+        """
+        head_snake = snake.get_head_position()
+        if head_snake == blue_apple.position and len(snake.positions) > 1:
+            snake.positions.remove(snake.positions[-1])
+            snake.length = len(snake.positions)
+            blue_apple.position = blue_apple.randomize_position()
+            GameObject.board_background_color = (255, 255, 255)
+        elif head_snake == blue_apple.position and len(snake.positions) == 1:
+            snake.reset()
+            GameObject.board_background_color = (255, 255, 255)
+
+    @staticmethod
+    def golden_apple(snake: Snake, golden_apple: GoldenApple):
+        """
+        Съедание золотого яблока змейкой.
+
+        При съедании яблока змейка ускоряется на 20, а золотое
+        яблоко перемещается в случайную точку на экране.
+        """
+        head_snake = snake.get_head_position()
+        if head_snake == golden_apple.position:
+            snake.speed += 20
+            golden_apple.position = golden_apple.randomize_position()
 
 
 def handle_keys(game_object):
@@ -193,34 +284,27 @@ def handle_keys(game_object):
                 game_object.next_direction = RIGHT
 
 
-def ate_apple(snake: Snake, apple: Apple):
-    """
-    Функция для обработки события съедания яблока змейкой.
-
-    При съедании яблока змейка растёт, а яблоко перемещается
-    в случайную точку на экране.
-    """
-    head_snake = snake.get_head_position()
-    if head_snake == apple.position:
-        snake.length += 1
-        apple.position = apple.randomize_position()
-
-
 def main():
     """Основной игровой цикл."""
     pygame.init()
     snake = Snake()
-    apple = Apple()
+    red_apple = RedApple()
+    blue_apple = BlueApple()
+    golden_apple = GoldenApple()
     while True:
-        clock.tick(SPEED)
+        clock.tick(snake.speed)
         handle_keys(snake)
         snake.update_direction()
-        ate_apple(snake, apple)
+        Eating.red_apple(snake, red_apple)
+        Eating.blue_apple(snake, blue_apple)
+        Eating.golden_apple(snake, golden_apple)
         snake.move()
         snake.collision()
-        screen.fill(BOARD_BACKGROUND_COLOR)
+        screen.fill(GameObject.board_background_color)
         snake.draw()
-        apple.draw()
+        red_apple.draw()
+        blue_apple.draw()
+        golden_apple.draw()
         pygame.display.update()
 
 
