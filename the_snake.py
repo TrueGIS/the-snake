@@ -184,6 +184,20 @@ class RedApple(Apple):
         self.position = self.randomize_position()
         self.body_color = RED_COLOR
 
+    def ate_apple(self, snake: Snake):
+        """
+        Съедание красного яблока змейкой.
+
+        При съедании яблока змейка растёт, излечивается от отравления
+        (фон становится чёрным), а яблоко перемещается в случайную
+        точку на экране.
+        """
+        head_snake = snake.get_head_position()
+        if head_snake == self.position:
+            GameObject.board_background_color = BOARD_BACKGROUND_COLOR
+            snake.length += 1
+            self.position = self.randomize_position()
+
 
 class BlueApple(Apple):
     """Представляет синее - ядовитое яблоко."""
@@ -193,40 +207,7 @@ class BlueApple(Apple):
         self.position = self.randomize_position()
         self.body_color = BLUE_COLOR
 
-
-class GoldenApple(Apple):
-    """Представляет золотое яблоко-бустер."""
-
-    def __init__(self):
-        super().__init__()
-        self.position = self.randomize_position()
-        self.body_color = GOLDEN_COLOR
-
-
-class Eating:
-    """
-    Обработка событий съедания яблок змейкой.
-
-    Всего три вида яблок с разными свойствами.
-    """
-
-    @staticmethod
-    def red_apple(snake: Snake, red_apple: RedApple):
-        """
-        Съедание красного яблока змейкой.
-
-        При съедании яблока змейка растёт, излечивается от отравления
-        (фон становится чёрным), а яблоко перемещается в случайную
-        точку на экране.
-        """
-        head_snake = snake.get_head_position()
-        if head_snake == red_apple.position:
-            GameObject.board_background_color = BOARD_BACKGROUND_COLOR
-            snake.length += 1
-            red_apple.position = red_apple.randomize_position()
-
-    @staticmethod
-    def blue_apple(snake: Snake, blue_apple: BlueApple):
+    def ate_apple(self, snake: Snake):
         """
         Съедание ядовитого яблока змейкой.
 
@@ -237,17 +218,25 @@ class Eating:
         и змейка перемещается в центр и меняет направление движения.
         """
         head_snake = snake.get_head_position()
-        if head_snake == blue_apple.position and len(snake.positions) > 1:
+        if head_snake == self.position and len(snake.positions) > 1:
             snake.positions.remove(snake.positions[-1])
             snake.length = len(snake.positions)
-            blue_apple.position = blue_apple.randomize_position()
+            self.position = self.randomize_position()
             GameObject.board_background_color = (255, 255, 255)
-        elif head_snake == blue_apple.position and len(snake.positions) == 1:
+        elif head_snake == self.position and len(snake.positions) == 1:
             snake.reset()
             GameObject.board_background_color = (255, 255, 255)
 
-    @staticmethod
-    def golden_apple(snake: Snake, golden_apple: GoldenApple):
+
+class GoldenApple(Apple):
+    """Представляет золотое яблоко-бустер."""
+
+    def __init__(self):
+        super().__init__()
+        self.position = self.randomize_position()
+        self.body_color = GOLDEN_COLOR
+
+    def ate_apple(self, snake: Snake):
         """
         Съедание золотого яблока змейкой.
 
@@ -255,9 +244,9 @@ class Eating:
         яблоко перемещается в случайную точку на экране.
         """
         head_snake = snake.get_head_position()
-        if head_snake == golden_apple.position:
+        if head_snake == self.position:
             snake.speed += 20
-            golden_apple.position = golden_apple.randomize_position()
+            self.position = self.randomize_position()
 
 
 def handle_keys(game_object):
@@ -295,9 +284,9 @@ def main():
         clock.tick(snake.speed)
         handle_keys(snake)
         snake.update_direction()
-        Eating.red_apple(snake, red_apple)
-        Eating.blue_apple(snake, blue_apple)
-        Eating.golden_apple(snake, golden_apple)
+        red_apple.ate_apple(snake)
+        blue_apple.ate_apple(snake)
+        golden_apple.ate_apple(snake)
         snake.move()
         snake.collision()
         screen.fill(GameObject.board_background_color)
