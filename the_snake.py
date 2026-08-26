@@ -69,8 +69,8 @@ class GameObject:
 
     def draw(self):
         """Заглушка для метода отрисовки."""
-        raise NotImplementedError("Дочерние классы должны"
-                                  + " реализовать метод draw()")
+        raise NotImplementedError('Дочерние классы должны'
+                                  + ' реализовать метод draw()')
 
 
 class Snake(GameObject):
@@ -132,10 +132,7 @@ class Snake(GameObject):
         В случае столкновения возвращает True.
         """
         head_snake_position = self.get_head_position()
-        if head_snake_position in self.positions[1:]:
-            return True
-        else:
-            return False
+        return head_snake_position in self.positions[1:]
 
     def update_direction(self):
         """
