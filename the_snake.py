@@ -14,6 +14,15 @@ UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+DIRECTIONS = {(LEFT, pg.K_UP): UP,  # с левого на верхнее
+              (RIGHT, pg.K_UP): UP,  # с правого на верхнее
+              (LEFT, pg.K_DOWN): DOWN,  # с правого на нижнее
+              (RIGHT, pg.K_DOWN): DOWN,  # с правого на нижнее
+              (DOWN, pg.K_LEFT): LEFT,  # с нижнего на левое
+              (UP, pg.K_LEFT): LEFT,  # с верхнего на левое
+              (DOWN, pg.K_RIGHT): RIGHT,  # с нижнего на правое
+              (UP, pg.K_RIGHT): RIGHT,  # с верхнего на правое
+              }
 
 # Цвета фона и игровых объектов
 BORDER_COLOR = (93, 216, 228)
@@ -80,7 +89,7 @@ class Snake(GameObject):
         super().__init__(body_color=body_color)
         self.positions: list = [self.position]
         self.length: int = 1
-        self.direction: tuple = RIGHT
+        self.direction: tuple = DIRECTIONS[(0, 1), pg.K_RIGHT]
         self.next_direction: tuple = None
         self.last: tuple = None
 
@@ -97,7 +106,7 @@ class Snake(GameObject):
         """
         self.positions = [self.position]
         self.length = 1
-        self.direction = choice([UP, DOWN, LEFT, RIGHT])
+        self.direction = choice(list(DIRECTIONS.values()))
         screen.fill(GameObject.BOARD_BACKGROUND_COLOR)
 
     def move(self):
@@ -193,14 +202,9 @@ def handle_keys(game_object):
             pg.quit()
             raise SystemExit
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_UP and game_object.direction != DOWN:
-                game_object.next_direction = UP
-            elif event.key == pg.K_DOWN and game_object.direction != UP:
-                game_object.next_direction = DOWN
-            elif event.key == pg.K_LEFT and game_object.direction != RIGHT:
-                game_object.next_direction = LEFT
-            elif event.key == pg.K_RIGHT and game_object.direction != LEFT:
-                game_object.next_direction = RIGHT
+            game_object.next_direction = (DIRECTIONS.get((
+                                          game_object.direction,
+                                          event.key), game_object.direction))
 
 
 def main():
