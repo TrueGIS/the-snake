@@ -14,15 +14,16 @@ UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
-DIRECTIONS = {(LEFT, pg.K_UP): UP,  # с левого на верхнее
-              (RIGHT, pg.K_UP): UP,  # с правого на верхнее
-              (LEFT, pg.K_DOWN): DOWN,  # с правого на нижнее
-              (RIGHT, pg.K_DOWN): DOWN,  # с правого на нижнее
-              (DOWN, pg.K_LEFT): LEFT,  # с нижнего на левое
-              (UP, pg.K_LEFT): LEFT,  # с верхнего на левое
-              (DOWN, pg.K_RIGHT): RIGHT,  # с нижнего на правое
-              (UP, pg.K_RIGHT): RIGHT,  # с верхнего на правое
-              }
+DIRECTIONS = {
+    (LEFT, pg.K_UP): UP,  # с левого на верхнее
+    (RIGHT, pg.K_UP): UP,  # с правого на верхнее
+    (LEFT, pg.K_DOWN): DOWN,  # с правого на нижнее
+    (RIGHT, pg.K_DOWN): DOWN,  # с правого на нижнее
+    (DOWN, pg.K_LEFT): LEFT,  # с нижнего на левое
+    (UP, pg.K_LEFT): LEFT,  # с верхнего на левое
+    (DOWN, pg.K_RIGHT): RIGHT,  # с нижнего на правое
+    (UP, pg.K_RIGHT): RIGHT,  # с верхнего на правое
+}
 
 # Цвета фона и игровых объектов
 BORDER_COLOR = (93, 216, 228)
@@ -41,29 +42,33 @@ clock = pg.time.Clock()
 
 
 class GameObject:
-    """
-    Базовый класс, где хранятся общие атрибуты
-    для игровых объектов Apple и Snake
+    """Родительский класс для всех игровых объектов.
+
+    Определяет единый интерфейс и общие атрибуты (position, body_color).
+    Включает метод draw_cell() для отрисовки отдельных элементов
+    и заглушку метода draw(): он должен быть переопределён в подклассах
+    (Apple, Snake) для корректной отрисовки конкретного объекта.
     """
 
-    BOARD_BACKGROUND_COLOR: tuple = BOARD_BACKGROUND_COLOR
-
-    def __init__(self, position: tuple = START_POSITION,
-                 body_color: tuple = DEFAULT_GRAY_COLOR):
+    def __init__(
+        self, position: tuple = START_POSITION,
+        body_color: tuple = DEFAULT_GRAY_COLOR
+    ):
         self.position = position
         self.body_color = body_color
 
-    def draw_cell(self, position, cell_color=DEFAULT_GRAY_COLOR,
-                  border_color=None):
+    def draw_cell(
+        self, position, cell_color=DEFAULT_GRAY_COLOR,
+        border_color=None
+    ):
         """
         Отрисовка ячейки.
 
         Метод используется для отрисовки элементов
         всех игровых объектов: яблок и змейки.
         """
-        self.cell_color = cell_color
         cell = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, self.cell_color, cell)
+        pg.draw.rect(screen, cell_color, cell)
         if border_color:
             pg.draw.rect(screen, border_color, cell, 1)
 
@@ -71,6 +76,31 @@ class GameObject:
         """Заглушка для метода отрисовки."""
         raise NotImplementedError('Дочерние классы должны'
                                   + ' реализовать метод draw()')
+
+
+class BackgroundController:
+    """
+    Управление цветом игрового поля в зависимости от состояния змейки
+
+    При создании экземпляра объекта необходимо передать нормальный
+    цвет фона и цвет на замену (отравленный).
+
+    При съедании змейкой отравленного яблока в главном цикле
+    выставляй флаг poisoned в True, при съедании красного -
+    возвращай флаг в False.
+
+    Используй в главном цикле метод draw() перед прорисовкой других объектов.
+    """
+
+    def __init__(self, normal_color: tuple, sick_color: tuple):
+        self.normal_color = normal_color
+        self.sick_color = sick_color
+        self.poisoned = False
+
+    def draw(self):
+        """Перерисовка фона в соответсвии с режимом игры"""
+        screen_color = self.sick_color if self.poisoned else self.normal_color
+        screen.fill(screen_color)
 
 
 class Snake(GameObject):
@@ -91,7 +121,6 @@ class Snake(GameObject):
         self.length: int = 1
         self.direction: tuple = DIRECTIONS[(0, 1), pg.K_RIGHT]
         self.next_direction: tuple = None
-        self.last: tuple = None
 
     def get_head_position(self) -> tuple:
         """Возвращает текущие координаты головы змейки."""
@@ -102,12 +131,11 @@ class Snake(GameObject):
         Сбрасывает змейку в случае столкновения с хвостом.
 
         Перемещает в исходное положение, сбрасывает хвост, задаёт случайное
-        направление движения, закрашивает поле базовым цветом фона.
+        направление движения.
         """
         self.positions = [self.position]
         self.length = 1
         self.direction = choice(list(DIRECTIONS.values()))
-        screen.fill(GameObject.BOARD_BACKGROUND_COLOR)
 
     def move(self):
         """
@@ -123,7 +151,7 @@ class Snake(GameObject):
                          * GRID_SIZE) % SCREEN_HEIGHT)
         self.positions.insert(0, (snake_head_x, snake_head_y))
         if len(self.positions) > self.length:
-            self.last = self.positions.pop()
+            self.positions.pop()
 
     def collision(self) -> bool:
         """
@@ -146,28 +174,22 @@ class Snake(GameObject):
             self.next_direction = None
 
     def draw(self):
-        """
-        Отрисовывает змейку.
-
-        Отрисовывает голову,
-        стирает последний сегмент тела после смещения головы.
-        """
-        self.draw_cell(self.positions[0], SNAKE_COLOR, BORDER_COLOR)
-        self.draw_cell(self.last, GameObject.BOARD_BACKGROUND_COLOR)
+        """Отрисовывает тело змейки в цикле после каждого смещения."""
+        for segment in self.positions:
+            self.draw_cell(segment, SNAKE_COLOR, BORDER_COLOR)
 
 
 class Apple(GameObject):
     """Представляет яблоки, перемещает и рисует их."""
 
-    def __init__(self, body_color=DEFAULT_GRAY_COLOR,
-                 closed_positions: list[tuple[int, int]] | None = None
-                 ):
-        super().__init__(position=START_POSITION, body_color=body_color)
+    def __init__(
+        self, body_color=DEFAULT_GRAY_COLOR,
+        closed_positions: list[tuple[int, int]] | None = None
+    ):
+        super().__init__(body_color=body_color)
         if closed_positions is None:
-            self.closed_positions = [START_POSITION]
-        else:
-            self.closed_positions = closed_positions
-        self.randomize_position(self.closed_positions)
+            closed_positions = [START_POSITION]
+        self.randomize_position(closed_positions)
 
     def randomize_position(self, closed_positions: list[tuple[int, int]]):
         """
@@ -229,17 +251,18 @@ def main():
     red_apple = Apple(RED_APPLE_COLOR)
     blue_apple = Apple(BLUE_APPLE_COLOR)
     golden_apple = Apple(GOLDEN_APPLE_COLOR)
+    all_apples = [red_apple, blue_apple, golden_apple]
+    bg_ctrl = BackgroundController(BOARD_BACKGROUND_COLOR, SICK_SNAKE_COLOR)
     while True:
         clock.tick(speed_game)
         handle_keys(snake)
         snake.update_direction()
         snake.move()
-        closed_pos = (snake.positions + [red_apple.position]
-                      + [blue_apple.position] + [golden_apple.position])
+        closed_pos = (snake.positions
+                      + [apple.position for apple in all_apples]
+                      )
         if snake.get_head_position() == red_apple.position:
-            if GameObject.BOARD_BACKGROUND_COLOR == SICK_SNAKE_COLOR:
-                GameObject.BOARD_BACKGROUND_COLOR = BOARD_BACKGROUND_COLOR
-                screen.fill(GameObject.BOARD_BACKGROUND_COLOR)
+            bg_ctrl.poisoned = False
             snake.length += 1
             red_apple.randomize_position(closed_pos)
         elif snake.get_head_position() == blue_apple.position:
@@ -247,16 +270,17 @@ def main():
                 snake.reset()
                 blue_apple.randomize_position(closed_pos)
             else:
-                snake.positions.remove(snake.positions[-1])
-                snake.length = len(snake.positions)
+                snake.positions.pop()
+                snake.length -= 1
                 blue_apple.randomize_position(closed_pos)
-            GameObject.BOARD_BACKGROUND_COLOR = SICK_SNAKE_COLOR
-            screen.fill(GameObject.BOARD_BACKGROUND_COLOR)
+            bg_ctrl.poisoned = True
         elif snake.get_head_position() == golden_apple.position:
             speed_game += 20
             golden_apple.randomize_position(closed_pos)
         elif snake.collision():
             snake.reset()
+            bg_ctrl.poisoned = False
+        bg_ctrl.draw()
         snake.draw()
         red_apple.draw()
         blue_apple.draw()
